@@ -36,4 +36,25 @@ type Job = Box<dyn FnOnce() + Send + 'static>;
 
 [Why is trait implemented on a type with some trait bound not accepting functions implemented on them? [duplicate]](https://stackoverflow.com/questions/57311728/why-is-trait-implemented-on-a-type-with-some-trait-bound-not-accepting-functions)
 
+ヒントは恐らくここ
 
+But actually the trait FnBox has been implemented for only all Sized types with FnOnce() trait. The docs for Sized have more info about this.
+
+A working example is:
+
+```rust
+trait FnBox {
+    fn call_box(self: Box<Self>);
+}
+
+impl<F: FnOnce() + ?Sized> FnBox for F {
+    fn call_box(self: Box<F>) {
+        (self)()
+    }
+}
+type Job = Box<dyn FnOnce() + Send + 'static>;
+```
+
+let job: Job = Box::new(|| println!("gwahhh"));
+job.call_box();
+Note that I had to remove the (*self)() in favor of (self)() because you cant move an unsized type out of a Box.
