@@ -32,6 +32,8 @@ impl<F: FnOnce() + ?Sized> FnBox for F {
 type Job = Box<dyn FnOnce() + Send + 'static>;
 ```
 
-参考にしたのは以下の記事である。
+参考にしたのはstack overflowで見つけた以下の質問である。
 
-https://stackoverflow.com/questions/57311728/why-is-trait-implemented-on-a-type-with-some-trait-bound-not-accepting-functions
+[Why is trait implemented on a type with some trait bound not accepting functions implemented on them? [duplicate]](https://stackoverflow.com/questions/57311728/why-is-trait-implemented-on-a-type-with-some-trait-bound-not-accepting-functions)
+
+
