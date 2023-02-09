@@ -19,8 +19,8 @@ trait objects must include the `dyn` keyword
 このエラーについては以下のように修正するとうまくいく。
 理由は不明。
 
-* <F: FnOnce()>を<F: FnOnce() + ?Sized>に修正する
-* Box<FnOnce() をBox<dyn FnOnce() に修正する
+* impl<F: FnOnce()> ~ をimpl <F: FnOnce() + ?Sized> ~ に修正する
+* type Job = Box<FnOnce() ~ をtype Job = Box<dyn FnOnce() ~ に修正する
 
 ```rust
 impl<F: FnOnce() + ?Sized> FnBox for F {
@@ -32,11 +32,26 @@ impl<F: FnOnce() + ?Sized> FnBox for F {
 type Job = Box<dyn FnOnce() + Send + 'static>;
 ```
 
+ちなみにimpl<F: FnOnce()> ~ のままだと以下のエラーを出力する。
+
+```bash
+the method `call_box` exists for struct `Box<dyn FnOnce() + Send>`, but its trait bounds were not satisfied
+method cannot be called on `Box<dyn FnOnce() + Send>` due to unsatisfied trait bounds
+
+構造体 `Box<dyn FnOnce() + Send>` に対してメソッド `call_box` は存在するが、その特性値が満たされていない。
+Box<dyn FnOnce() + Send>` に対して、特性境界が満たされていないため、メソッドを呼び出すことができません。
+```
+
+type Job = Box<FnOnce() ~ のままだと以下のエラーを出力する。
+
+```bash
+trait objects must include the `dyn` keyword
+trait オブジェクトは `dyn` キーワードを含んでいなければなりません。
+```
+
 参考にしたのはstack overflowで見つけた以下の質問である。
 
 [Why is trait implemented on a type with some trait bound not accepting functions implemented on them? [duplicate]](https://stackoverflow.com/questions/57311728/why-is-trait-implemented-on-a-type-with-some-trait-bound-not-accepting-functions)
-
-### 以下回答内容のコピー
 
 I think the problem is the implicit Sized bound on F in the impl for your FnBox trait, which makes a Box<dyn T> not covered under that impl.
 
