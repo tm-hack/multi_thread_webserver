@@ -7,9 +7,9 @@ trait FnBox {
     fn call_box(self: Box<Self>);
 }
 
-impl<F: FnOnce()> FnBox for F {
+impl<F: FnOnce() + ?Sized> FnBox for F {
     fn call_box(self: Box<F>) {
-        (*self)()
+        (self)()
     }
 }
 
