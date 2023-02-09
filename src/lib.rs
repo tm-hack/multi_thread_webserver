@@ -3,16 +3,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 
-trait FnBox {
-    fn call_box(self: Box<Self>);
-}
-
-impl<F: FnOnce() + ?Sized> FnBox for F {
-    fn call_box(self: Box<F>) {
-        (self)()
-    }
-}
-
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
 pub struct ThreadPool {
@@ -73,7 +63,7 @@ impl Worker {
 
             println!("Worker {} got a job: executing", id);
 
-            job.call_box();
+            job();
         });
         Worker { id, thread }
     }
