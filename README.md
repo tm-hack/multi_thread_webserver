@@ -36,7 +36,13 @@ type Job = Box<dyn FnOnce() + Send + 'static>;
 
 [Why is trait implemented on a type with some trait bound not accepting functions implemented on them? [duplicate]](https://stackoverflow.com/questions/57311728/why-is-trait-implemented-on-a-type-with-some-trait-bound-not-accepting-functions)
 
-### ヒントは恐らくここ
+### 以下回答内容のコピー
+
+I think the problem is the implicit Sized bound on F in the impl for your FnBox trait, which makes a Box<dyn T> not covered under that impl.
+
+You say
+
+> The trait FnBox has been implemented on all the types with FnOnce() trait.
 
 But actually the trait FnBox has been implemented for only all Sized types with FnOnce() trait. The docs for Sized have more info about this.
 
