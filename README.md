@@ -1,4 +1,4 @@
-# single_thread_webserver
+# multi_thread_webserver
 
 ## Overview
 The Rust Programming Language 日本語版 20章の演習内容です。
