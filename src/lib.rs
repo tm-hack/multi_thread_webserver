@@ -7,7 +7,25 @@ type Job = Box<dyn FnOnce() + Send + 'static>;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    sender: mpsc::Sender<Job>,
+    sender: Option<mpsc::Sender<Job>>,
+}
+
+// Dropトレイトを実装することでThreadPoolがdropされる場合の動作をカスタマイズする
+// ThreadPoolのdrop時にスレッドの終了を待機する
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        drop(self.sender.take());
+
+        // 全てのスレッドが終了するのを待つ
+        for worker in &mut self.workers {
+            println!("Shutting down worker {}", worker.id);
+
+            // Option型を付与することでtakeメソッドを呼び出すことにより所有権を移動できる
+            if let Some(thread) = worker.thread.take() {
+                thread.join().unwrap();
+            }
+        }
+    }
 }
 
 impl ThreadPool {
@@ -36,35 +54,56 @@ impl ThreadPool {
             workers.push(worker);
         }
 
-        ThreadPool { workers, sender }
+        ThreadPool {
+            workers,
+            sender: Some(sender),
+        }
     }
 
-    // 引数で受け取ったジョブをworkerに引き渡していることは分かるが、
-    // ソースコードの中で行っていることの詳細は不明
+    // 受け取ったジョブ（関数）をチャネルに送信している
     pub fn execute<F>(&self, f: F)
     where
         F: FnOnce() + Send + 'static,
     {
         let job = Box::new(f);
 
-        self.sender.send(job).unwrap();
+        self.sender.as_ref().unwrap().send(job).unwrap();
     }
 }
 
 struct Worker {
     id: usize,
-    thread: thread::JoinHandle<()>,
+    thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Worker {
     pub fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+        // 引数として受け取ったreceiverの所有権を盗み、チャネルの受信を契機に処理を実行するクロージャ
+        // なお、このクロージャは別スレッドで起動する
         let thread = thread::spawn(move || loop {
-            let job = receiver.lock().unwrap().recv().unwrap();
+            let message = receiver.lock().unwrap().recv();
 
-            println!("Worker {} got a job: executing", id);
+            match message {
+                // jobを受け取った場合はそのjobを実行する
+                Ok(job) => {
+                    println!("Worker {id} got a job: executing");
 
-            job();
+                    job();
+                }
+                // エラーを受け取った場合（チャネルが閉じられた場合）はloopを抜けてworkerを停止する
+                Err(err) => {
+                    println!("{err}"); // "receiving on a closed channel"
+                    println!("Worker {id} disconnected; shutting down.");
+                    break;
+                }
+            }
         });
-        Worker { id, thread }
+
+        println!("worker #{} が作られました", id);
+
+        Worker {
+            id,
+            thread: Some(thread),
+        }
     }
 }
